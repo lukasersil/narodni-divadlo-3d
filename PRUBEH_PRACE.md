@@ -151,6 +151,15 @@ Kolo je hotové a publikované: artefakt https://claude.ai/artifact/PvU6B3GmkXCe
   python3 assemble.py <složka se snímky>
   ```
   Průlet kamery západní zdí při letu do hlediště (snímky 741–749) nahradí 10snímkovou prolínačkou a zakóduje obě MP4.
+- **Hudba (5. 10. 2026)**: Händel, *Music for the Royal Fireworks* (Marko Maksimovic, Artlist Classics), stažené z Artlistu přes účet Lukáše.
+  - Výstup: `video/narodni-divadlo-promo-hudba.mp4` (AAC 320 kb/s) a `video/narodni-divadlo-promo-hudba-web.mp4` (AAC 192 kb/s).
+  - Obraz je zkopírovaný beze změny. Tiché verze zůstávají a jen ty jsou v GitHub release, protože hudba z Artlistu pod licenci MIT nepatří.
+  - Skladba má 126,7 s a video 65,9 s.
+    - Úvod hraje od začátku, takže fanfára jde pod titulek.
+    - Na 30,8 s je střih o 13 taktů (58,03 s) dál, takže závěrečný akord padne na závěrečnou kartu.
+    - Místo střihu se našlo porovnáním rytmu, harmonie a hlasitosti. Leží těsně před dobou, kterou mají oba úseky společnou, a vedle změny v obraze.
+  - Hlasitost je −15 LUFS, true peak −1,5 dBTP, bez limiteru.
+  - Postup je ve skriptu `python3 .playwright-mcp/promo/music.py`. WAV leží v `video/artlist/`, který je v `.gitignore`.
 
 ## Verze 10: vizuál značky Lukáše Eršila (3. 10. 2026)
 
@@ -284,6 +293,29 @@ Verze 12 opravila jen příčky. Zbytek blikání byl chybně připsán pohybu k
   - první pokus s hloubkou počítanou v shaderu byl až 3× pomalejší, protože vypínal časný test hloubky; proto vznikla dvojčata.
 - **Video** je natočené znovu v jednom běhu (`render.cjs`, 4K → 1080p, celých 65,9 s).
   - Porovnání stejných šesti snímků ze scény s řezem: ve verzi 12 se ve foyer střídala dveřní plocha se stěnou, teď je obraz stálý.
+
+## Verze 15: zamrzání prohlížeče při otevření (5. 10. 2026)
+
+Zpětná vazba: při otevření odkazu zamrzne prohlížeč.
+
+- **Příčina:** v prvním snímku three.js sestavilo a zkompilovalo shadery všech objektů najednou, synchronně v hlavním vlákně.
+  - Každý `InstancedMesh` má v r186 vlastní klíč cache (`object.uuid`, v three.js je u toho TODO), takže se sestavuje zvlášť. Dohromady se dvojčaty v řezu a průchodem stínů to bylo zhruba 1 000 sestavení.
+  - Pole rovin řezu (`ClippingGroup`) pojmenuje three.js v shaderu unikátním ID uzlu (`NodeBuffer_14084`). Stejný shader tak měl pro každý objekt jiný text a GPU ho kompilovalo znovu: 460 vertex shaderů a 473 pipeline místo zhruba 170 a 240.
+- **Oprava:**
+  - `src/core/shaderdedupe.js` po vygenerování kódu přejmenuje tyto buffery podle pořadí výskytu (`NodeBufferC0`, `C1`…). Stejné shadery mají stejný text a cache programů v three.js je kompiluje jednou. U WebGPU se zdroje vážou podle indexu, u WebGL se přejmenují i vazby uniform bloků.
+  - `warmUp()` v `main.js`: za načítací obrazovkou se objekty zapínají po dávkách. Každý snímek kreslí jen jednu dávku, sestaví asi 50 ms shaderů a pustí prohlížeč ke slovu. Velikost dávky se přizpůsobuje, žlutá linka ukazuje průběh.
+  - Mezi kroky stavby scény je `await nextFrame()`. `window.__nd` se nastaví až po zahřátí, nástroje (promo, QA) proto čekají na hotové shadery.
+  - Bez WebGPU se na načítací obrazovce objeví věta, že první spuštění potrvá déle.
+- **Měření** (Chrome, 1512 × 945 při DPR 2; nejdelší úsek, kdy hlavní vlákno nereaguje / model připravený):
+
+  | Prostředí | Před | Po |
+  |---|---|---|
+  | WebGPU, rychlý Mac | 2,2 s / 3,7 s | 0,3 s / 3,8 s |
+  | WebGPU, procesor 4× pomalejší | 8,7 s / 11,7 s | 0,7 s / 13,1 s |
+  | WebGL 2 (prohlížeč bez WebGPU) | 23,9 s / ≈ 25 s | 0,4 s / 5,0 s |
+
+- **Kontrola:** obraz se nezměnil. Při zastavené smyčce, stejné kameře a zmrazeném čase shaderu je budova v exteriéru, řezu, rentgenu i v noci pixelově shodná. Liší se jen náhodné koruny stromů, poloha tramvaje a animované proudění v rentgenu, a to i mezi dvěma běhy bez opravy.
+- **Zůstává:** za běhu kreslí model asi 1 000 volání a 2 miliony trojúhelníků za snímek. Na pomalém procesoru běží kolem 30 fps.
 
 ## Náměty na další kolo (nic z toho není rozbité)
 

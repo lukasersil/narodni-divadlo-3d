@@ -194,7 +194,11 @@ body.tl-hidden .tl-show { display: flex; }
 .loading .inner { display: grid; justify-items: center; gap: 14px; text-align: center; }
 .loading .crown { font-family: var(--display); font-size: 52px; line-height: 1; letter-spacing: 0.01em; text-transform: uppercase; color: var(--fg); }
 .loading .crown span { color: var(--accent); }
-.loading .rule { width: 80px; height: 4px; background: var(--accent); }
+.loading .rule { width: 160px; height: 4px; background: var(--line); overflow: hidden; }
+/* shader warm-up progress (main.js sets --p from 0 to 1) */
+.loading .rule i { display: block; height: 100%; background: var(--accent); transform-origin: left center; transform: scaleX(max(0.08, var(--p, 0))); transition: transform .25s ease-out; }
+@media (prefers-reduced-motion: reduce) { .loading .rule i { transition: none; } }
+.loading .slow { max-width: 300px; font-size: var(--fs-small); line-height: 1.5; color: var(--muted); }
 .loading .msg { font-size: var(--fs-eyebrow); font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
 .loading .err { max-width: 420px; line-height: 1.5; color: var(--fg); text-align: left; border-left: 3px solid var(--danger); padding-left: 12px; }
 
@@ -357,8 +361,9 @@ body.tl-hidden .tl-show { display: flex; }
 <div class="loading" id="loading">
   <div class="inner">
     <div class="crown">Národ <span>sobě.</span></div>
-    <div class="rule"></div>
+    <div class="rule" id="load-bar" role="progressbar" aria-label="Načítání" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i></i></div>
     <div class="msg" data-t="loading">Stavím model…</div>
+    <div class="slow" id="load-slow" data-t="loadSlow" hidden>Tento prohlížeč nemá WebGPU, takže první spuštění potrvá déle.</div>
     <div class="err" id="load-err" hidden></div>
   </div>
 </div>
