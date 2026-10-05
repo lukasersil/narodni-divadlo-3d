@@ -76,19 +76,18 @@ Barvy vrstev v rentgenu zůstaly barevné, protože rozlišují 10 vrstev v mode
 - **Kód** (`index.html`, `src/`, `tools/`, `serve.py`) je pod licencí MIT (soubor `LICENSE`). Můžete ho volně používat, upravovat i šířit, zachovejte jen jméno autora a text licence.
 - **Podklady, textury z fotografií a mapová data** si nechávají své licence (CC BY 4.0, CC BY-SA 3.0/4.0, ODbL), viz níže. Při dalším šíření je uveďte. Úpravy textur pod CC BY-SA šiřte pod stejnou licencí.
 - **Fotka autora** (`assets/avatar.png`) a jeho jméno v hlavičce patří k podpisu tohoto modelu. Pokud model šíříte jako vlastní dílo, nahraďte je.
-- **Nástroje** v `tools/` čtou zdrojové podklady ze složky `~/Documents/narodni-divadlo-podklady`, která v repozitáři není. Hotová data jsou v `src/data/`.
-- Průběh práce a rozhodnutí jsou v `PRUBEH_PRACE.md`.
+- **Nástroje** v `tools/` čtou zdrojové podklady (plány, fotografie, mapová data), které v repozitáři nejsou. Hledají je ve složce `narodni-divadlo-podklady` vedle repozitáře, jinou cestu nastavíte proměnnou `ND_PODKLADY`. Hotová data jsou v `src/data/`.
 
 ## Podklady a licence
 
-Podklady jsou ve složce `~/Documents/narodni-divadlo-podklady` (README a soubory ZDROJE.md).
+Podklady se v repozitáři nešíří. Pocházejí z těchto zdrojů:
 
 - Půdorys: RÚIAN, ČÚZK (CC BY 4.0). Výšky, okolí a terén: IPR Praha, Budovy 3D a výškové rastry (CC BY 4.0). Řeka, most a ulice: © přispěvatelé OpenStreetMap (ODbL).
 - Dispozice: J. Fialka, půdorysy a podélný řez (Šubert 1883), řez z Architektonického obzoru 1914 (volné dílo).
 - Technika: technická dokumentace ND, seriál TOPIN (V. Mužík), ENESA a ND. Čísla jsou převzatá, texty vlastní.
 - Ilustrace v `assets/`: Šubert 1881/1883, Světozor (volné dílo).
 - Textury z fotografií (Wikimedia Commons): opona – Lehotsky (CC BY-SA 3.0); strop hlediště – Dobroš (CC BY-SA 4.0), fotka pořízená kolmo vzhůru a narovnaná homografií podle osmi rozet; strop foyer a lunety – Palickap (CC BY-SA 3.0). Malby samotné jsou volné dílo. Zlacené reliéfy parapetů a girlandy nad portálem jsou kreslené procedurálně.
-- Fasády, střecha a kopule jsou porovnané s fotografiemi v `03_exterier_reference/` (autoři a licence v ZDROJE.md).
+- Fasády, střecha a kopule jsou porovnané s referenčními fotografiemi, které v repozitáři nejsou.
 
 ## Osa hlediště a jeviště
 

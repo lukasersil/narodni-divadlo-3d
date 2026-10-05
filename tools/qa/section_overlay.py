@@ -7,12 +7,15 @@ The render must come from `__qa.secView()` in tools/qa/browser_snippets.js: 1280
 1500 m west of Zítek's axis, fov 3°, centred on v = 44 m, y = 14 m (≈ 9.675 px per metre).
 Grid: thin blue line every 1 m of height (thick every 5 m, 0 = street), green line every 5 m along v.
 """
+import os
 import sys
 from pathlib import Path
 
 from PIL import Image, ImageChops, ImageDraw, ImageOps
 
-DRAWING = Path.home() / "Documents/narodni-divadlo-podklady/01_plany_rezy_pohledy/rez_hlavni_podelny_nynejsi_stav_Zitek_Schulz_ArchObzor1914_tab11-12.jpg"
+# the research pack (plans, photos, map data) is not in the repository: it sits next to it, or where ND_PODKLADY points
+PODKLADY = Path(os.environ.get("ND_PODKLADY", Path(__file__).resolve().parents[3] / "narodni-divadlo-podklady"))
+DRAWING = PODKLADY / "01_plany_rezy_pohledy/rez_hlavni_podelny_nynejsi_stav_Zitek_Schulz_ArchObzor1914_tab11-12.jpg"
 PX_M = 35.6                  # drawing pixels per metre at full resolution (scale bar)
 X_PORTAL, Y_STREET = 2540, 2418  # drawing pixel of the proscenium wall (v = 36.6) and of street level
 PORTAL_V = 36.6

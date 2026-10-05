@@ -4,3 +4,6 @@ __pycache__/
 .claude/
 .playwright-mcp/
 video/
+# working notes and private documents stay local
+PRUBEH_PRACE.md
+odhad-ceny/

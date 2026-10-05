@@ -10,12 +10,15 @@ Sources (podklady/04_interier_reference, see ZDROJE.md there):
 The parapet reliefs (parapet_tiers) and the frieze are drawn procedurally.
 """
 import math
+import os
 from pathlib import Path
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageEnhance, ImageOps
 
-REF = Path.home() / "Documents/narodni-divadlo-podklady/04_interier_reference"
+# the research pack (plans, photos, map data) is not in the repository: it sits next to it, or where ND_PODKLADY points
+PODKLADY = Path(os.environ.get("ND_PODKLADY", Path(__file__).resolve().parents[2] / "narodni-divadlo-podklady"))
+REF = PODKLADY / "04_interier_reference"
 OUT = Path(__file__).resolve().parents[1] / "assets"
 FONT = "/System/Library/Fonts/Supplemental/Didot.ttc"
 rng = np.random.default_rng(7)

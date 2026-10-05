@@ -9,6 +9,7 @@ Run:  python3 tools/prep_partitions.py      (numpy, scipy, scikit-image, Pillow)
 """
 import json
 import math
+import os
 from pathlib import Path
 
 import numpy as np
@@ -17,9 +18,11 @@ from scipy import ndimage, optimize
 from skimage.draw import polygon as fill_polygon
 
 ROOT = Path(__file__).resolve().parents[1]
-PLANS = Path.home() / "Documents/narodni-divadlo-podklady/01_plany_rezy_pohledy"
+# the research pack (plans, photos, map data) is not in the repository: it sits next to it, or where ND_PODKLADY points
+PODKLADY = Path(os.environ.get("ND_PODKLADY", ROOT.parent / "narodni-divadlo-podklady"))
+PLANS = PODKLADY / "01_plany_rezy_pohledy"
 OUT = ROOT / "src/data/partitions.js"
-DEBUG = Path(__import__('os').environ.get('ND_DEBUG', str(ROOT / 'tools' / '_debug')))
+DEBUG = Path(os.environ.get('ND_DEBUG', str(ROOT / 'tools' / '_debug')))
 
 site = (ROOT / "src/data/site.js").read_text()
 FOOT = np.array(json.loads(site[site.index("{"): site.rindex(";")])["frame"]["footprint"], float)  # [u, v]
