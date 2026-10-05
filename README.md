@@ -35,8 +35,9 @@ Stačí Python 3 a aktuální Chrome, Edge nebo Safari. Nic se neinstaluje ani n
 | Soubor | Obsah |
 |---|---|
 | `index.html` | rozhraní, styly ve vizuálu značky autora, importmap (three z jsDelivr) |
-| `src/main.js` | renderer (obrácený hloubkový buffer s plovoucí čárkou), kamera, světla, obloha, řezy (ClippingGroup), bloom (RenderPipeline + MRT), hlavní smyčka |
+| `src/main.js` | renderer (obrácený hloubkový buffer s plovoucí čárkou), kamera, světla, obloha, řezy (ClippingGroup), bloom (RenderPipeline + MRT), zahřátí shaderů po dávkách za načítací obrazovkou, hlavní smyčka |
 | `src/core/registry.js` | stavební hodiny T (0–7): každý díl má etapu, pořadí a režim animace (rise / grow / drop / slide / appear), chování v rentgenu a vrstvu; díly s příznakem `modern` (tramvaje, Nová scéna, dnešní reflektory) se při požáru 1881 skryjí |
+| `src/core/shaderdedupe.js` | sjednotí text shaderů, které se liší jen jménem uniform bufferu (pole rovin řezu, malá pole instancí), aby se každý program kompiloval jednou; bez toho první snímek zamrzl na sekundy |
 | `src/core/materials.js` | procedurální textury (pískovec, bosáž, cihly, kosočtverečná břidlice se světlými hvězdami, měď, žula, mramorování a intarzie foyer), TSL efekty (noc, rentgen, proudění); tmavé poché v řezu: zdi kreslí jen líc a `addSectionInsides()` jim přidá dvojče s vnitřkem, pořadí při shodné hloubce řeší hloubkový posun (vnitřek zdi > detaily > líc zdi) |
 | `src/core/geom.js` | polygony, stěny, tažené římsy, loft kopule, trámy |
 | `src/config.js` | rámec budovy B (u východ, v jih, azimut 353,6°), osa hlediště `AXIS` (pootočená o 3°, viz níže), výšky, půdorysy, rozměry jeviště |

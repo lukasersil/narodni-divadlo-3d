@@ -1,4 +1,5 @@
 import * as THREE from 'three/webgpu';
+import './core/shaderdedupe.js';
 import { pass, mrt, output, emissive, vec3, mix, smoothstep, positionLocal, normalize } from 'three/tsl';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -23,6 +24,10 @@ import { STAGES, LAYERS, UI_TEXT } from './data/content.js';
 
 const container = document.getElementById('stage3d');
 const loadErr = document.getElementById('load-err');
+const loadBar = document.getElementById('load-bar');
+// one animation frame: the browser paints the loading veil and handles input between long steps of the start-up
+// (a hidden tab gets no frames, so it only waits for the event loop)
+const nextFrame = () => new Promise((resolve) => (document.hidden ? setTimeout(resolve, 0) : requestAnimationFrame(() => resolve())));
 
 // auditorium-frame point [u, y, v] → building frame
 const A = ([u, y, v]) => { const [bu, bv] = audToB(u, v); return [bu, y, bv]; };
@@ -76,6 +81,7 @@ async function main() {
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
   scene.environmentIntensity = 0.55;
+  await nextFrame();
 
   // sky dome
   const sky = new THREE.Mesh(new THREE.SphereGeometry(3500, 32, 16), new THREE.MeshBasicNodeMaterial({ side: THREE.BackSide, depthWrite: false, fog: false }));
@@ -109,6 +115,7 @@ async function main() {
 
   // ------------------------------------------------------------------ model
   const M = createMaterials({ reversedDepth: renderer.reversedDepthBuffer });
+  await nextFrame();
   const R = new Registry();
   R.setGhostMaterial('shell', M.ghost);
   R.setGhostMaterial('soft', M.ghostSoft);
@@ -116,6 +123,7 @@ async function main() {
   for (const l of LAYERS) R.setGhostMaterial('layer:' + l.id, layerMaterial(l.color));
 
   buildSite(scene, M, R);
+  await nextFrame();
 
   const root = new THREE.ClippingGroup();
   root.name = 'narodni-divadlo';
@@ -139,14 +147,11 @@ async function main() {
   audPivot.add(audRot);
   audRot.add(audRoot);
   const ctx = { root, audRoot, M, R, scene, camera };
-  buildShell(ctx);
-  buildPartitions(ctx);
-  buildFacade(ctx);
-  buildScaffold(ctx);
-  buildInterior(ctx);
-  buildStage(ctx);
-  buildSystems(ctx);
-  buildTrams(ctx); // present-day trams on Národní, Most Legií and the embankments
+  // buildTrams: present-day trams on Národní, Most Legií and the embankments
+  for (const build of [buildShell, buildPartitions, buildFacade, buildScaffold, buildInterior, buildStage, buildSystems, buildTrams]) {
+    build(ctx);
+    await nextFrame(); // a slow CPU spends seconds here: keep the page responsive between the parts
+  }
   const fire = new Fire(ctx);
   addSectionInsides(root, M); // dark inside of the walls in a section
 
@@ -296,7 +301,6 @@ async function main() {
   const ui = initUI({ state, STAGES, LAYERS, VIEWPOINTS, backend, camera, renderer, actions });
   uiReady = true;
   const debug = { noPost: false };
-  window.__nd = { state, actions, camera, controls, VIEWS, scene, THREE, R, renderer, sun, debug, ctx };
 
   function enterStop(i, fly) {
     state.lastStop = i;
@@ -338,6 +342,43 @@ async function main() {
   fitCamera();
   window.addEventListener('resize', fitCamera);
   if (window.ResizeObserver) new ResizeObserver(fitCamera).observe(container);
+
+  // ------------------------------------------------------------------ shader warm-up
+  // three.js builds the shaders of an object when it is first drawn. Drawing everything in the first frame built
+  // ~1 000 of them at once (every InstancedMesh gets its own) and froze the page: ~2 s on a fast Mac, ~9 s on a
+  // slower laptop, ~24 s without WebGPU. Behind the loading veil the objects are switched on in batches instead,
+  // each frame building about 50 ms of shaders, so the page keeps responding and the bar shows the progress.
+  async function warmUp() {
+    if (!container.clientWidth || !container.clientHeight) return; // hidden pane / thumbnail: nothing to draw into
+    if (backend !== 'WebGPU') document.getElementById('load-slow').hidden = false;
+    const items = [];
+    scene.traverse((o) => { if ((o.isMesh || o.isLine || o.isPoints) && o.visible) items.push(o); });
+    const off = new Set(items); // switched off here, on again at the end
+    const culled = items.map((o) => o.frustumCulled);
+    for (const o of items) { o.visible = false; o.frustumCulled = false; } // objects off screen get their shaders too
+    // each frame draws one batch alone (with the meshes it hangs under), so a frame costs only that batch's shaders
+    const shown = [];
+    let i = 0, batch = 8;
+    while (i < items.length) {
+      const end = document.hidden ? items.length : Math.min(items.length, i + batch); // a hidden tab has no one to freeze
+      for (; i < end; i++) {
+        for (let o = items[i]; o; o = o.parent) if (off.has(o) && !o.visible) { o.visible = true; shown.push(o); }
+      }
+      const t0 = performance.now();
+      pipeline.render();
+      batch = THREE.MathUtils.clamp(Math.round(batch * Math.min(2, 50 / Math.max(performance.now() - t0, 2))), 1, 128); // grow gently: shaders differ in cost
+      for (const o of shown) o.visible = false;
+      shown.length = 0;
+      const p = i / items.length;
+      loadBar.style.setProperty('--p', p.toFixed(3));
+      loadBar.setAttribute('aria-valuenow', Math.round(p * 100));
+      await nextFrame();
+    }
+    items.forEach((o, k) => { o.visible = true; o.frustumCulled = culled[k]; });
+  }
+  await warmUp();
+  // tools (promo renderer, QA scripts) wait for this: the model is built and its shaders are ready
+  window.__nd = { state, actions, camera, controls, VIEWS, scene, THREE, R, renderer, sun, debug, ctx };
 
   document.getElementById('loading').style.opacity = '0';
   setTimeout(() => document.getElementById('loading').remove(), 900);
