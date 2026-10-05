@@ -1,0 +1,6 @@
+.DS_Store
+__pycache__/
+# local tooling and outputs: the promo video is attached to the GitHub release
+.claude/
+.playwright-mcp/
+video/

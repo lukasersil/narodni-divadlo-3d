@@ -1,0 +1,366 @@
+<title>Národní divadlo 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;700&display=swap">
+<style>
+/* Layout: full-bleed 3D stage; masthead block top-left, view controls top-right, stage card + timeline bar along the bottom.
+   The author's brand (Lukáš Eršil): black surfaces, white type, one yellow accent for the current state and the call to action,
+   Bebas Neue headlines in capitals, DM Sans text, square corners; the photo stands in for a logo. Single dark look.
+   Every informative panel can be put away: the stage and fire cards close with ×, the timeline folds into a tab, the side panel into ☰. */
+:root {
+  --bg: #000;
+  --panel: rgba(0, 0, 0, 0.88);
+  --scrim: rgba(0, 0, 0, 0.72);
+  --raised: #1a1a1a;
+  --line: #333;
+  --line-hi: #666;
+  --fg: #fff;
+  --fg-2: #ccc;
+  --muted: #999;
+  --accent: #ffe600;
+  --accent-hover: #f5c400;
+  --on-accent: #000;
+  --danger: #c8102e;
+  --danger-soft: rgba(200, 16, 46, 0.24);
+  --display: 'Bebas Neue', Impact, 'Arial Narrow', sans-serif;
+  --body: 'DM Sans', Arial, sans-serif;
+  /* type scale */
+  --fs-title: clamp(24px, 2.2vw, 30px);
+  --fs-card: 24px;
+  --fs-dialog: 34px;
+  --fs-text: 12.5px;
+  --fs-ui: 12px;
+  --fs-small: 11px;
+  --fs-eyebrow: 10px;
+  /* bottom offset of the cards that sit above the timeline */
+  --above-tl: calc(env(safe-area-inset-bottom, 0px) + 96px);
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 13px; overflow: hidden; }
+body.tl-hidden { --above-tl: calc(env(safe-area-inset-bottom, 0px) + 62px); }
+#stage3d { position: fixed; inset: 0; }
+#stage3d canvas { display: block; width: 100%; height: 100%; touch-action: none; outline: none; }
+button { font: inherit; color: inherit; border-radius: 0; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+svg { display: block; }
+
+/* eyebrow: small capitals with the yellow square of the brand */
+.eb { font-size: var(--fs-eyebrow); font-weight: 700; letter-spacing: 0.18em; line-height: 1.25; text-transform: uppercase; color: var(--accent); }
+.eb::before { content: ''; display: inline-block; width: 6px; height: 6px; margin-right: 8px; vertical-align: 1px; background: var(--accent); }
+.eb:empty { display: none; }
+
+/* masthead: title block with the author's photo in place of a logo */
+.masthead { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 16px); left: 16px; pointer-events: none; }
+.mast { display: grid; gap: 8px; background: var(--panel); border: 1px solid var(--line); padding: 10px 14px 11px; }
+.mast .kicker { margin: 0; }
+.mast h1 { margin: 0; font-family: var(--display); font-weight: 400; font-size: var(--fs-title); line-height: 1; letter-spacing: 0.01em; text-transform: uppercase; color: var(--fg); white-space: nowrap; }
+.mast h1 span { color: var(--accent); }
+.author { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--line); padding-top: 9px; }
+.author img { width: 28px; height: 28px; border-radius: 50%; display: block; flex: none; }
+.author b { display: block; font-family: var(--display); font-weight: 400; font-size: 15px; line-height: 1.05; letter-spacing: 0.03em; text-transform: uppercase; color: var(--fg); }
+.author small { display: block; font-size: 10.5px; color: var(--muted); }
+
+/* top-right toolbar */
+.toolbar { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 16px); right: 16px; display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; max-width: calc(100vw - 32px); }
+.seg { box-sizing: border-box; height: 36px; display: inline-flex; gap: 2px; background: var(--panel); border: 1px solid var(--line); padding: 3px; }
+.seg button { border: 0; background: transparent; padding: 0 11px; cursor: pointer; font-size: var(--fs-ui); font-weight: 500; color: var(--fg-2); white-space: nowrap; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.seg button:hover:not([aria-pressed="true"]) { color: var(--fg); }
+.chip-btn { box-sizing: border-box; height: 36px; background: var(--panel); border: 1px solid var(--line); padding: 0 12px; cursor: pointer; font-size: var(--fs-ui); font-weight: 500; color: var(--fg-2); white-space: nowrap; }
+.chip-btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.chip-btn:hover:not([aria-pressed="true"]) { color: var(--fg); border-color: var(--line-hi); }
+.panel-toggle { width: 36px; padding: 0; display: grid; place-items: center; }
+.panel-toggle svg { width: 14px; height: 14px; }
+.panel-toggle[aria-expanded="true"] { color: var(--fg); border-color: var(--line-hi); }
+
+/* side panel (views, section sliders, layers) */
+.side { position: fixed; right: 16px; top: calc(env(safe-area-inset-top, 0px) + 60px); width: 236px; display: flex; flex-direction: column; gap: 6px; max-height: calc(100% - 176px); overflow: auto; }
+.side[data-collapsed="true"] { display: none; }
+.card { box-sizing: border-box; background: var(--panel); border: 1px solid var(--line); padding: 12px 14px; }
+.card h3 { margin: 0 0 9px; }
+.card h3.split { display: flex; align-items: center; gap: 8px; }
+.card h3 .mini { margin-left: auto; display: flex; gap: 10px; }
+.card h3 .mini button { background: none; border: 0; color: var(--muted); font-size: var(--fs-small); font-weight: 500; cursor: pointer; padding: 0; }
+.card h3 .mini button:hover { color: var(--fg); }
+.layers { display: grid; gap: 1px; }
+.views { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.view-btn { background: var(--raised); border: 1px solid var(--line); padding: 6px 8px; color: var(--fg-2); font-size: var(--fs-ui); font-weight: 500; cursor: pointer; text-align: left; }
+.view-btn:hover { color: var(--fg); border-color: var(--line-hi); }
+.view-btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.layer { display: flex; align-items: center; gap: 9px; padding: 5px 6px; cursor: pointer; background: transparent; border: 0; text-align: left; color: var(--muted); font-size: var(--fs-ui); }
+.layer:hover { background: var(--raised); color: var(--fg); }
+.layer .dot { width: 9px; height: 9px; flex: none; opacity: 0.3; }
+.layer[aria-pressed="true"] { color: var(--fg); }
+.layer[aria-pressed="true"] .dot { opacity: 1; }
+.slider { display: grid; gap: 5px; margin-top: 5px; }
+.slider label { font-size: var(--fs-small); color: var(--fg-2); display: flex; justify-content: space-between; gap: 8px; }
+.slider label b { font-weight: 500; }
+.slider label span { color: var(--fg); font-variant-numeric: tabular-nums; white-space: nowrap; }
+input[type=range] { width: 100%; accent-color: var(--accent); }
+
+/* bottom: stage card + timeline */
+.bottom { position: fixed; left: 16px; right: 16px; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); display: grid; gap: 6px; pointer-events: none; }
+body.tl-hidden .bottom { display: none; }
+.stagecard { position: relative; pointer-events: auto; max-width: 420px; }
+.stagecard.dismissed { display: none !important; }
+.stagecard h2 { margin: 6px 0 6px; padding-right: 24px; font-family: var(--display); font-weight: 400; font-size: var(--fs-card); line-height: 1.05; letter-spacing: 0.01em; text-transform: uppercase; color: var(--fg); text-wrap: balance; }
+.stagecard p { margin: 0; line-height: 1.6; color: var(--fg-2); font-size: var(--fs-text); max-width: 62ch; }
+.timeline { pointer-events: auto; background: var(--panel); border: 1px solid var(--line); padding: 8px 10px 9px 12px; display: grid; grid-template-columns: auto 1fr auto auto; grid-template-areas: "play track fire tools"; gap: 14px; align-items: center; }
+.play { grid-area: play; width: 38px; height: 38px; border: 0; background: var(--accent); color: var(--on-accent); cursor: pointer; display: grid; place-items: center; }
+.play:hover { background: var(--accent-hover); }
+.play svg { width: 14px; height: 14px; }
+.track { grid-area: track; position: relative; min-width: 0; }
+.stops { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; position: relative; }
+.stop { background: none; border: 0; cursor: pointer; padding: 3px 2px 0; text-align: center; color: var(--fg-2); min-width: 0; }
+.stop .yr { display: block; font-family: var(--display); font-size: 13px; line-height: 1.1; letter-spacing: 0.05em; color: var(--muted); }
+.stop .nm { display: block; font-size: var(--fs-small); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stop[aria-current="step"] .yr { color: var(--accent); }
+.stop[aria-current="step"] .nm { color: var(--fg); font-weight: 700; }
+.stop:hover .nm { color: var(--fg); }
+.rail { position: relative; height: 16px; margin: 0 calc(100% / 16); }
+.rail .bar { position: absolute; top: 7px; left: 0; right: 0; height: 2px; background: var(--line); }
+.rail .fill { position: absolute; top: 7px; left: 0; height: 2px; background: var(--accent); width: 0; }
+.rail .knot { position: absolute; top: 4px; box-sizing: border-box; width: 8px; height: 8px; margin-left: -4px; background: var(--bg); border: 2px solid var(--line-hi); }
+.rail .knot.done { border-color: var(--accent); background: var(--accent); }
+.rail input { position: absolute; inset: -4px 0 0 0; width: 100%; opacity: 0; cursor: pointer; margin: 0; height: 24px; }
+.fire-btn { grid-area: fire; box-sizing: border-box; height: 36px; border: 1px solid var(--danger); background: var(--panel); color: var(--fg); padding: 0 12px; cursor: pointer; font-size: var(--fs-ui); font-weight: 500; white-space: nowrap; }
+.fire-btn:hover { background: var(--danger-soft); }
+.fire-btn[aria-pressed="true"] { background: var(--danger); color: var(--fg); }
+.tl-tools { grid-area: tools; display: flex; gap: 4px; }
+.icon-btn { box-sizing: border-box; width: 36px; height: 36px; display: grid; place-items: center; padding: 0; background: transparent; border: 1px solid var(--line); color: var(--muted); cursor: pointer; }
+.icon-btn:hover { color: var(--fg); border-color: var(--line-hi); }
+.icon-btn[aria-pressed="true"] { color: var(--fg); border-color: var(--line-hi); }
+.icon-btn svg { width: 14px; height: 14px; }
+/* the folded timeline: one tab in the corner brings it back */
+.tl-show { position: fixed; left: 16px; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); display: none; align-items: center; gap: 8px; box-sizing: border-box; height: 36px; padding: 0 12px; background: var(--panel); border: 1px solid var(--line); color: var(--fg); font-size: var(--fs-eyebrow); font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; cursor: pointer; }
+.tl-show svg { width: 12px; height: 12px; color: var(--accent); }
+.tl-show:hover { border-color: var(--line-hi); }
+body.tl-hidden .tl-show { display: flex; }
+.cta { background: var(--accent); color: var(--on-accent); border: 0; padding: 10px 14px; font-size: var(--fs-ui); font-weight: 700; cursor: pointer; }
+.cta:hover { background: var(--accent-hover); }
+
+/* hotspots */
+#hotspots { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+.hs { position: absolute; left: 0; top: 0; box-sizing: border-box; width: 26px; height: 26px; margin: -13px 0 0 -13px; padding: 2px 0 0; border-radius: 50%; border: 2px solid var(--accent); background: var(--bg); color: var(--fg); font-family: var(--display); font-size: 14px; line-height: 1; display: grid; place-items: center; cursor: pointer; opacity: 0; pointer-events: none; transition: opacity .25s, background-color .2s; }
+.hs::after { content: ''; position: absolute; inset: -7px; border-radius: 50%; border: 1px solid var(--accent); animation: ping 2.6s ease-out infinite; }
+.hs:hover, .hs.active { background: var(--accent); color: var(--on-accent); }
+.hs.layer-hs { border-color: currentColor; width: 20px; height: 20px; margin: -10px 0 0 -10px; padding: 0; font-family: var(--body); font-size: 8px; }
+.hs.layer-hs::after { display: none; }
+/* invisible padding: a comfortable 44 px touch target round the small markers */
+.hs::before { content: ''; position: absolute; inset: -9px; border-radius: 50%; }
+.hs.layer-hs::before { inset: -12px; }
+@keyframes ping { 0% { transform: scale(.7); opacity: .8; } 100% { transform: scale(1.5); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .hs::after { animation: none; opacity: 0; } }
+
+.close { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; display: grid; place-items: center; background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 20px; line-height: 1; }
+.close:hover { color: var(--fg); }
+
+.info { position: fixed; z-index: 5; right: 16px; bottom: var(--above-tl); width: min(340px, calc(100vw - 32px)); max-height: calc(100% - 190px); overflow: auto; }
+.info h4 { margin: 6px 0 8px; padding-right: 24px; font-family: var(--display); font-weight: 400; font-size: var(--fs-card); line-height: 1.05; letter-spacing: 0.01em; text-transform: uppercase; color: var(--fg); text-wrap: balance; }
+.info .yr:empty + h4 { margin-top: 0; }
+.info p { margin: 0; line-height: 1.6; color: var(--fg-2); font-size: var(--fs-text); }
+.info figure { margin: 10px 0 0; }
+.info img { width: 100%; display: block; background: var(--raised); }
+.info figcaption { margin-top: 5px; font-size: var(--fs-small); color: var(--muted); line-height: 1.4; }
+
+/* kept below the masthead: the old photo is cropped on short screens and the card scrolls when it still does not fit */
+.firecard { position: fixed; left: 16px; bottom: var(--above-tl); width: min(360px, calc(100vw - 32px)); max-height: calc(100% - 260px); overflow: auto; border-color: var(--danger); z-index: 4; }
+.firecard h4 { margin: 0 0 6px; padding-right: 24px; font-family: var(--display); font-weight: 400; font-size: var(--fs-card); line-height: 1.05; letter-spacing: 0.01em; text-transform: uppercase; color: var(--fg); }
+.firecard p { margin: 0 0 10px; line-height: 1.6; color: var(--fg-2); font-size: var(--fs-text); }
+.firecard figure { margin: 0 0 10px; }
+.firecard img { width: 100%; max-height: 26vh; object-fit: cover; display: block; }
+.firecard figcaption { font-size: var(--fs-small); color: var(--muted); margin-top: 4px; }
+
+/* centred in the gap between the masthead (left) and the toolbar / views panel (right), below the toolbar row */
+.hint { position: fixed; left: 370px; right: 270px; top: calc(env(safe-area-inset-top, 0px) + 60px); width: fit-content; margin-inline: auto; text-align: center; font-size: var(--fs-small); color: var(--fg-2); background: var(--panel); padding: 6px 11px; border: 1px solid var(--line); transition: opacity .6s; pointer-events: none; }
+
+.about { position: fixed; inset: 0; display: grid; place-items: center; background: var(--scrim); z-index: 10; padding-inline: 16px; }
+.about .card { max-width: 600px; max-height: calc(100% - 64px); overflow: auto; padding: 22px 24px; position: relative; background: var(--bg); }
+.about h4 { margin: 0 0 10px; padding-right: 30px; font-family: var(--display); font-weight: 400; font-size: var(--fs-dialog); line-height: 1; letter-spacing: 0.01em; text-transform: uppercase; color: var(--fg); }
+.about p, .about li { line-height: 1.6; color: var(--fg-2); font-size: var(--fs-text); }
+.about ul { list-style: none; padding: 0; margin: 10px 0 12px; }
+.about li { position: relative; padding: 6px 0 6px 16px; border-top: 1px solid var(--line); }
+.about li::before { content: ''; position: absolute; left: 0; top: 14px; width: 6px; height: 6px; background: var(--accent); }
+.about .drawing { width: 100%; margin-top: 12px; display: block; }
+.about a { color: var(--accent); text-underline-offset: 2px; }
+.about a:hover { color: var(--accent-hover); }
+.about-foot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.about-foot .author { border: 0; padding: 0; }
+.about-foot .role { font-size: var(--fs-eyebrow); font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); text-align: right; }
+.about-foot .role span { display: block; margin-top: 3px; font-weight: 500; letter-spacing: 0.08em; }
+
+.loading { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); z-index: 20; transition: opacity .8s; padding-inline: 16px; }
+.loading .inner { display: grid; justify-items: center; gap: 14px; text-align: center; }
+.loading .crown { font-family: var(--display); font-size: 52px; line-height: 1; letter-spacing: 0.01em; text-transform: uppercase; color: var(--fg); }
+.loading .crown span { color: var(--accent); }
+.loading .rule { width: 80px; height: 4px; background: var(--accent); }
+.loading .msg { font-size: var(--fs-eyebrow); font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
+.loading .err { max-width: 420px; line-height: 1.5; color: var(--fg); text-align: left; border-left: 3px solid var(--danger); padding-left: 12px; }
+
+@media (max-height: 760px) {
+  .firecard img { max-height: 20vh; }
+}
+@media (max-width: 1100px) and (min-width: 761px) {
+  .mast .kicker { display: none; }
+  .hint { left: 250px; }
+}
+@media (max-width: 760px) {
+  :root { --above-tl: calc(env(safe-area-inset-bottom, 0px) + 122px); }
+  /* compact masthead: the title and the photo side by side */
+  .mast { grid-template-columns: auto auto; align-items: center; column-gap: 10px; padding: 7px 9px 7px 11px; }
+  .mast .kicker { display: none; }
+  .mast h1 { font-size: 22px; }
+  .author { border: 0; padding: 0; }
+  .author img { width: 26px; height: 26px; }
+  .mast .author > span { display: none; }
+  .toolbar { top: calc(env(safe-area-inset-top, 0px) + 62px); left: 16px; right: 16px; justify-content: flex-start; gap: 5px; }
+  .seg, .chip-btn { height: 34px; }
+  .seg button { padding: 0 9px; }
+  .chip-btn { padding: 0 10px; }
+  .panel-toggle { width: 34px; padding: 0; }
+  .side { top: auto; bottom: var(--above-tl); right: 16px; left: 16px; width: auto; max-height: 34%; }
+  .layers { grid-template-columns: 1fr 1fr; }
+  .layer { padding: 4px; }
+  .stagecard { display: none; }
+  .stagecard.show-mobile { display: block; }
+  .stop .nm { display: none; }
+  /* eight year ranges do not fit side by side on a phone: only the current stop shows its years */
+  .stop { position: relative; min-height: 18px; }
+  .stop .yr { visibility: hidden; position: absolute; top: 3px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
+  .stop[aria-current="step"] .yr { visibility: visible; color: var(--accent); }
+  .stop:first-child .yr { left: 2px; transform: none; }
+  .stop:last-child .yr { left: auto; right: 2px; transform: none; }
+  .firecard img { max-height: 20vh; }
+  .timeline { grid-template-columns: auto 1fr auto; grid-template-areas: "play track track" "fire fire tools"; row-gap: 8px; }
+  .fire-btn { justify-self: start; height: 34px; }
+  .icon-btn { width: 34px; height: 34px; }
+  .firecard { max-height: calc(100% - 250px); }
+  .about h4 { font-size: 30px; }
+  .loading .crown { font-size: 40px; }
+  .hint { display: none; }
+}
+</style>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.webgpu.js",
+    "three/webgpu": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.webgpu.js",
+    "three/tsl": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.tsl.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"
+  }
+}
+</script>
+
+<div id="stage3d" role="img" data-ta="model3d" aria-label="3D model Národního divadla"></div>
+<div id="hotspots"></div>
+
+<header class="masthead">
+  <div class="mast">
+    <p class="kicker eb" data-t="subtitle">Stavba 1868–1883 · interaktivní model</p>
+    <h1>Národní <span>divadlo.</span></h1>
+    <div class="author"><img src="assets/avatar.png" alt="" width="28" height="28"><span><b>Lukáš Eršil</b><small>@lukasersil</small></span></div>
+  </div>
+</header>
+<div class="hint" id="hint" data-t="hint"></div>
+
+<nav class="toolbar" data-ta="toolbar" aria-label="Zobrazení">
+  <div class="seg" role="group" data-ta="mode" aria-label="Režim">
+    <button id="btn-ext" aria-pressed="true" data-t="exterior">Exteriér</button>
+    <button id="btn-xray" aria-pressed="false" data-t="xray">Rentgen</button>
+  </div>
+  <button class="chip-btn" id="btn-cut" aria-pressed="false" data-t="cut">Řez</button>
+  <button class="chip-btn" id="btn-night" aria-pressed="false" data-t="night">Noc</button>
+  <div class="seg" role="group" data-ta="language" aria-label="Jazyk">
+    <button id="btn-cz" aria-pressed="true">CZ</button>
+    <button id="btn-en" aria-pressed="false">EN</button>
+  </div>
+  <button class="chip-btn" id="btn-about" data-t="about">O modelu</button>
+  <button class="chip-btn panel-toggle" id="btn-panel" aria-expanded="false" aria-controls="side" data-ta="menu" data-tt="menu" aria-label="Pohledy a vrstvy"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4h12M2 8h12M2 12h12" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
+</nav>
+
+<aside class="side" id="side" data-collapsed="true">
+  <section class="card" id="views-card">
+    <h3 class="eb" data-t="views">Pohledy</h3>
+    <div class="views" id="views"></div>
+  </section>
+  <section class="card" id="cut-card" hidden>
+    <h3 class="eb" data-t="cut">Řez</h3>
+    <div class="slider">
+      <label for="cut-long"><b data-t="cutLong">Podélný řez</b><span id="cut-long-v"></span></label>
+      <input type="range" id="cut-long" min="-26" max="22" step="0.1" value="-1.9">
+    </div>
+    <div class="slider">
+      <label for="cut-plan"><b data-t="cutPlan">Vodorovný řez</b><span id="cut-plan-v"></span></label>
+      <input type="range" id="cut-plan" min="-8" max="46" step="0.1" value="46">
+    </div>
+  </section>
+  <section class="card" id="layer-card" hidden>
+    <h3 class="split"><span class="eb" data-t="layers">Vrstvy</span><span class="mini"><button id="layers-all" data-t="all">Vše</button><button id="layers-none" data-t="none">Nic</button></span></h3>
+    <div class="layers" id="layers"></div>
+  </section>
+</aside>
+
+<div class="bottom">
+  <section class="card stagecard" id="stagecard" aria-live="polite">
+    <button class="close" id="sc-close" data-ta="hideDesc" data-tt="hideDesc" aria-label="Skrýt popis">×</button>
+    <div class="eyebrow eb" id="sc-eyebrow"></div>
+    <h2 id="sc-title"></h2>
+    <p id="sc-text"></p>
+  </section>
+  <div class="timeline">
+    <button class="play" id="btn-play" aria-label="Přehrát stavbu">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path id="play-icon" d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg>
+    </button>
+    <div class="track">
+      <div class="rail">
+        <div class="bar"></div><div class="fill" id="rail-fill"></div>
+        <div id="knots"></div>
+        <input type="range" id="scrub" min="0" max="7" step="0.01" value="7" data-ta="timeline" aria-label="Časová osa stavby">
+      </div>
+      <div class="stops" id="stops"></div>
+    </div>
+    <button class="fire-btn" id="btn-fire" aria-pressed="false" data-t="fire">Požár 1881</button>
+    <div class="tl-tools">
+      <button class="icon-btn" id="btn-desc" aria-pressed="true" data-ta="descToggle" data-tt="descToggle" aria-label="Popis etapy"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M7 2.5h2v2H7zM7 6.5h2v7H7z" fill="currentColor"/></svg></button>
+      <button class="icon-btn" id="btn-tl-hide" data-ta="tlHide" data-tt="tlHide" aria-label="Skrýt časovou osu"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 5.5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+    </div>
+  </div>
+</div>
+<button class="tl-show" id="tl-show"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 10.5l5-5 5 5" fill="none" stroke="currentColor" stroke-width="2.4"/></svg><span data-t="tlShow">Časová osa</span></button>
+
+<section class="card info" id="info" hidden aria-live="polite">
+  <button class="close" id="info-close" data-ta="close" aria-label="Zavřít">×</button>
+  <div class="yr eb" id="info-yr"></div>
+  <h4 id="info-title"></h4>
+  <p id="info-text"></p>
+  <figure id="info-fig" hidden><img id="info-img" alt=""><figcaption id="info-cap"></figcaption></figure>
+</section>
+
+<section class="card firecard" id="firecard" hidden>
+  <button class="close" id="fire-close" data-ta="hideDesc" data-tt="hideDesc" aria-label="Skrýt popis">×</button>
+  <h4 data-t="fireTitle">12. srpna 1881</h4>
+  <p data-t="fireText"></p>
+  <figure><img src="assets/pozar.jpg" data-talt="fireAlt" alt="Hořící Národní divadlo 12. 8. 1881"><figcaption data-t="fireCredit">Světozor 1881, volné dílo</figcaption></figure>
+  <button class="cta" id="btn-rebuild" data-t="rebuild">Obnova 1883</button>
+</section>
+
+<div class="about" id="about" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="about-title">
+    <button class="close" id="about-close" data-ta="close" aria-label="Zavřít">×</button>
+    <h4 id="about-title">O modelu</h4>
+    <div id="about-body"></div>
+  </div>
+</div>
+
+<div class="loading" id="loading">
+  <div class="inner">
+    <div class="crown">Národ <span>sobě.</span></div>
+    <div class="rule"></div>
+    <div class="msg" data-t="loading">Stavím model…</div>
+    <div class="err" id="load-err" hidden></div>
+  </div>
+</div>
+
+<script type="module" src="src/main.js"></script>
