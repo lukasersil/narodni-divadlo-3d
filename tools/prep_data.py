@@ -7,7 +7,7 @@ origin = tmerc point lat 50.08094 / lon 14.41352 (centre of ND), y = 0 at street
 level by the theatre (191.3 m Bpv). The historic building itself is modelled in a
 building frame "B" (u east, v south along the long axis, azimuth 353.6°).
 """
-import base64, json, math
+import base64, json, math, os
 from pathlib import Path
 
 import numpy as np
@@ -16,7 +16,9 @@ from pyproj import Transformer
 from shapely.geometry import Polygon, LineString, box, Point
 from shapely.ops import unary_union
 
-SRC = Path.home() / "Documents/narodni-divadlo-podklady/07_3d_modely_a_data"
+# the research pack (plans, photos, map data) is not in the repository: it sits next to it, or where ND_PODKLADY points
+PODKLADY = Path(os.environ.get("ND_PODKLADY", Path(__file__).resolve().parents[2] / "narodni-divadlo-podklady"))
+SRC = PODKLADY / "07_3d_modely_a_data"
 OUT = Path(__file__).resolve().parents[1] / "src/data/site.js"
 
 GROUND_BPV = 191.3

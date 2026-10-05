@@ -1,5 +1,5 @@
 // Texts for the timeline, X-ray layers and hotspots (CZ / EN).
-// Facts come from the research pack in ~/Documents/narodni-divadlo-podklady
+// Facts come from the research pack (narodni-divadlo-podklady, not in the repository)
 // (Šubert 1881/1883, TOPIN 2023–25, ND Stage Technology, RÚIAN/IPR geodata).
 
 // Timeline stops. `t` is the value of the build clock T at which the stop is complete.
